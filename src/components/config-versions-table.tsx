@@ -9,11 +9,20 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type PaginationState,
   type SortingState,
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
+import {
+  ArrowUpDown,
+  ChevronDown,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
@@ -27,6 +36,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
 
@@ -88,6 +104,10 @@ export function ConfigVersionsTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const columns = React.useMemo<
     ColumnDef<{
@@ -221,8 +241,17 @@ export function ConfigVersionsTable({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {sorting, columnFilters, columnVisibility, rowSelection},
+    onPaginationChange: setPagination,
+    state: {sorting, columnFilters, columnVisibility, rowSelection, pagination},
   });
+
+  const filteredRowCount = table.getFilteredRowModel().rows.length;
+  const firstVisibleRow =
+    filteredRowCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
+  const lastVisibleRow = Math.min(
+    (pagination.pageIndex + 1) * pagination.pageSize,
+    filteredRowCount,
+  );
 
   const isInteractive = (el: EventTarget | null) => {
     if (!(el instanceof Element)) return false;
@@ -313,6 +342,80 @@ export function ConfigVersionsTable({
             )}
           </TableBody>
         </Table>
+      </div>
+      <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Showing {firstVisibleRow}-{lastVisibleRow} of {filteredRowCount} versions
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="whitespace-nowrap text-sm">Rows per page</span>
+            <Select
+              value={String(pagination.pageSize)}
+              onValueChange={value => table.setPageSize(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[70px]" aria-label="Rows per page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 20, 50].map(pageSize => (
+                  <SelectItem key={pageSize} value={String(pageSize)}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="whitespace-nowrap text-sm">
+            Page {pagination.pageIndex + 1} of {Math.max(table.getPageCount(), 1)}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.firstPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Go to first page"
+              title="First page"
+            >
+              <ChevronFirst />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Go to previous page"
+              title="Previous page"
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Go to next page"
+              title="Next page"
+            >
+              <ChevronRight />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.lastPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Go to last page"
+              title="Last page"
+            >
+              <ChevronLast />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
